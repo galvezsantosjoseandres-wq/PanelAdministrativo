@@ -4,6 +4,8 @@ import { api, ApiError } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, PageHeader, Textarea } from "../components/ui";
 import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
+const LEFINOR_BASE_URL = "https://lefinor.com";
+
 const empty = {
   slug: "",
   categoria: "derecho-civil",
@@ -104,7 +106,11 @@ export function PublicacionNueva() {
             <p className="text-xs text-slate-400 mb-3">
               Opcional. Si no subes una, el artículo usa la imagen por defecto de la categoría.
             </p>
-            <ImageUploadField value={portadaUpload} onChange={setPortadaUpload} />
+            <ImageUploadField
+              value={portadaUpload}
+              onChange={setPortadaUpload}
+              existingPreviewUrl={form.imagen_portada ? `${LEFINOR_BASE_URL}${form.imagen_portada}` : null}
+            />
           </Card>
           <Card>
             <h2 className="font-semibold mb-1">Autor</h2>

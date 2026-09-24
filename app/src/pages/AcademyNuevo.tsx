@@ -4,6 +4,8 @@ import { api, ApiError } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, ListEditor, PageHeader, Textarea, Toggle } from "../components/ui";
 import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
+const LEFINOR_BASE_URL = "https://lefinor.com";
+
 const empty = {
   id: "",
   titulo: "",
@@ -18,6 +20,7 @@ const empty = {
   estado: "disponible" as "disponible" | "impartido",
   destacado: false,
   visible: false,
+  imagen_portada: null as string | null,
 };
 
 export function AcademyNuevo() {
@@ -46,6 +49,7 @@ export function AcademyNuevo() {
         estado: "disponible" | "impartido";
         destacado?: boolean;
         visible: boolean;
+        imagen_portada?: string | null;
       };
       setForm({
         ...empty,
@@ -138,7 +142,11 @@ export function AcademyNuevo() {
           <Card>
             <h2 className="font-semibold mb-1">Imagen de portada</h2>
             <p className="text-xs text-slate-400 mb-3">Opcional</p>
-            <ImageUploadField value={portadaUpload} onChange={setPortadaUpload} />
+            <ImageUploadField
+              value={portadaUpload}
+              onChange={setPortadaUpload}
+              existingPreviewUrl={form.imagen_portada ? `${LEFINOR_BASE_URL}${form.imagen_portada}` : null}
+            />
           </Card>
           <Card>
             <h2 className="font-semibold mb-1">Instructores</h2>
