@@ -5,9 +5,9 @@ import { useMe } from "../lib/useMe";
 const navItems = [
   { to: "/", label: "Inicio" },
   { to: "/propiedades", label: "Propiedades" },
-  { to: "/publicaciones/nueva", label: "Publicaciones" },
-  { to: "/academy/nuevo", label: "Academy" },
-  { to: "/equipo/nuevo", label: "Equipo" },
+  { to: "/publicaciones", label: "Publicaciones" },
+  { to: "/academy", label: "Academy" },
+  { to: "/equipo", label: "Equipo" },
   { to: "/carrusel-inicio", label: "Carrusel de Inicio" },
   { to: "/cambios-pendientes", label: "Cambios pendientes" },
   { to: "/historial", label: "Historial" },
@@ -48,6 +48,12 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="text-xs text-slate-400 capitalize">
               {me.role} · via Cloudflare Access
             </div>
+            <a
+              href={`https://${me.teamDomain}/cdn-cgi/access/logout`}
+              className="block mt-2 text-xs text-slate-300 hover:text-white underline"
+            >
+              Cerrar sesión
+            </a>
           </div>
         )}
       </aside>

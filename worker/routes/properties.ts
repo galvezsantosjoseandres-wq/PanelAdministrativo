@@ -271,3 +271,30 @@ properties.post("/:slug/galeria", async (c) => {
 
   return c.json({ prNumber }, 200);
 });
+
+properties.delete("/:slug", async (c) => {
+  const slug = parseSlugParam(c.req.param("slug"));
+  if (!slug) return c.json({ error: "Slug inválido" }, 400);
+
+  const github = new GitHubClient(c.env);
+  const path = `data/propiedades/${slug}.json`;
+  const raw = await github.readTextFile(path);
+  if (!raw) return c.json({ error: "No encontrada" }, 404);
+  const current = propiedadSchema.parse(JSON.parse(raw));
+
+  const galleryFolder = `public/img/propiedades/${slug}`;
+  const galleryEntries = await github.listDir(galleryFolder);
+  const deletePaths = [path, ...galleryEntries.map((e) => `${galleryFolder}/${e.name}`)];
+
+  const user = c.get("user");
+  const { prNumber } = await submitChange(c.env, github, user, {
+    entityType: "propiedad",
+    entityId: slug,
+    actionType: "delete",
+    summary: `Eliminar propiedad: ${current.titulo}`,
+    files: [],
+    deletePaths,
+  });
+
+  return c.json({ prNumber }, 200);
+});

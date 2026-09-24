@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, ApiError, type Propiedad } from "../lib/api";
+import { api, ApiError, type Publicacion } from "../lib/api";
 import { Button, Card, ErrorBanner, InfoBanner, PageHeader } from "../components/ui";
 import { PreviewButton } from "../components/PreviewButton";
 
-export function Propiedades() {
-  const [items, setItems] = useState<Propiedad[]>([]);
+export function Publicaciones() {
+  const [items, setItems] = useState<Publicacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   async function load() {
-    const data = await api.listarPropiedades();
+    const data = await api.listarPublicaciones();
     setItems(data.items ?? []);
     setLoading(false);
   }
@@ -20,10 +20,10 @@ export function Propiedades() {
     load();
   }, []);
 
-  async function toggle(slug: string, campo: "destacada" | "visible", valor: boolean) {
+  async function toggle(slug: string, visible: boolean) {
     setError(null);
     try {
-      await api.togglePropiedad(slug, campo, valor);
+      await api.togglePublicacion(slug, visible);
       setFeedback("Cambio enviado a revisión.");
       load();
     } catch (e) {
@@ -35,7 +35,7 @@ export function Propiedades() {
     if (!window.confirm(`¿Enviar a revisión la eliminación de "${titulo}"?`)) return;
     setError(null);
     try {
-      await api.eliminarPropiedad(slug);
+      await api.eliminarPublicacion(slug);
       setFeedback("Eliminación enviada a revisión.");
       load();
     } catch (e) {
@@ -46,11 +46,11 @@ export function Propiedades() {
   return (
     <div>
       <PageHeader
-        title="Propiedades"
+        title="Publicaciones"
         subtitle={`${items.filter((p) => p.visible).length} publicadas · ${items.filter((p) => !p.visible).length} ocultas`}
         action={
-          <Link to="/propiedades/nueva">
-            <Button>+ Nueva propiedad</Button>
+          <Link to="/publicaciones/nueva">
+            <Button>+ Nueva publicación</Button>
           </Link>
         }
       />
@@ -70,7 +70,7 @@ export function Propiedades() {
       <Card>
         {loading && <p className="text-sm text-slate-400">Cargando…</p>}
         {!loading && items.length === 0 && (
-          <p className="text-sm text-slate-400">Todavía no hay propiedades cargadas.</p>
+          <p className="text-sm text-slate-400">Todavía no hay publicaciones cargadas.</p>
         )}
         <table className="w-full text-sm">
           <tbody>
@@ -78,28 +78,19 @@ export function Propiedades() {
               <tr key={p.slug} className="border-b last:border-0">
                 <td className="py-3">
                   <div className="font-medium">{p.titulo}</div>
-                  <div className="text-slate-500">{p.ciudad}</div>
+                  <div className="text-slate-500">{p.fecha}</div>
                 </td>
                 <td className="py-3">
                   <span className="px-2 py-1 rounded-full bg-slate-100 text-xs capitalize">
-                    {p.tipo_operacion}
+                    {p.categoria}
                   </span>
                 </td>
-                <td className="py-3">
-                  <button
-                    onClick={() => toggle(p.slug, "destacada", !p.destacada)}
-                    title="Destacar en Inicio"
-                    className={p.destacada ? "text-panel-gold" : "text-slate-300"}
-                  >
-                    ★
-                  </button>
-                </td>
                 <td className="py-3 text-right space-x-2 whitespace-nowrap">
-                  <Link to={`/propiedades/${p.slug}`}>
+                  <Link to={`/publicaciones/${p.slug}`}>
                     <Button variant="secondary">Editar</Button>
                   </Link>
-                  <PreviewButton entityType="propiedad" entityId={p.slug} />
-                  <Button variant="secondary" onClick={() => toggle(p.slug, "visible", !p.visible)}>
+                  <PreviewButton entityType="publicacion" entityId={p.slug} />
+                  <Button variant="secondary" onClick={() => toggle(p.slug, !p.visible)}>
                     {p.visible ? "Ocultar de producción" : "Publicar"}
                   </Button>
                   <Button variant="danger" onClick={() => eliminar(p.slug, p.titulo)}>

@@ -13,6 +13,7 @@ import {
   Toggle,
 } from "../components/ui";
 import { GalleryUploader } from "../components/GalleryUploader";
+import { SLUG_REGEX } from "../lib/slug";
 
 interface CaracteristicaRow {
   label: string;
@@ -40,12 +41,13 @@ export function PropiedadEditar() {
   const [form, setForm] = useState(empty);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [gallerySaved, setGallerySaved] = useState(false);
+  const slugValido = SLUG_REGEX.test(form.slug);
+  const slugBloqueado = !isNew || gallerySaved;
 
   useEffect(() => {
     if (!slug) return;
-    fetch(`/api/propiedades/${slug}`)
-      .then((r) => r.json())
-      .then((data) => setForm({ ...empty, ...data }));
+    api.obtenerPropiedad(slug).then((data) => setForm({ ...empty, ...data }));
   }, [slug]);
 
   async function guardar() {
@@ -85,7 +87,7 @@ export function PropiedadEditar() {
             <Field label="Slug (identificador único, no se puede cambiar luego)" required>
               <Input
                 value={form.slug}
-                disabled={!isNew}
+                disabled={slugBloqueado}
                 onChange={(e) => setForm({ ...form, slug: e.target.value })}
                 placeholder="apartamento-moca"
               />
@@ -219,20 +221,19 @@ export function PropiedadEditar() {
               se publique en producción.
             </p>
           </Card>
-          {!isNew && slug && (
-            <Card>
-              <h2 className="font-semibold mb-4">Galería</h2>
-              <GalleryUploader slug={slug} />
-            </Card>
-          )}
-          {isNew && (
-            <Card>
-              <h2 className="font-semibold mb-2">Galería</h2>
+          <Card>
+            <h2 className="font-semibold mb-4">Galería</h2>
+            {slugValido ? (
+              <GalleryUploader
+                slug={slug ?? form.slug}
+                onSaved={() => setGallerySaved(true)}
+              />
+            ) : (
               <p className="text-sm text-slate-500">
-                Podrás subir fotos y video una vez que guardes esta propiedad por primera vez.
+                Escribe primero un slug válido arriba para poder subir fotos y video.
               </p>
-            </Card>
-          )}
+            )}
+          </Card>
         </div>
       </div>
     </div>

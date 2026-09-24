@@ -146,3 +146,12 @@ export function ErrorBanner({ message }: { message: string | null }) {
     </div>
   );
 }
+
+export function InfoBanner({ message }: { message: ReactNode | null }) {
+  if (!message) return null;
+  return (
+    <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm px-4 py-3">
+      {message}
+    </div>
+  );
+}

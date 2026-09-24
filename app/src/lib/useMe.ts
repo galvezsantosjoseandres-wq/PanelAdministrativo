@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 
 export function useMe() {
-  const [me, setMe] = useState<{ email: string; role: "propietario" | "colaborador" } | null>(
-    null
-  );
+  const [me, setMe] = useState<
+    { email: string; role: "propietario" | "colaborador"; teamDomain: string } | null
+  >(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

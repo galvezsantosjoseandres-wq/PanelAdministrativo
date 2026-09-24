@@ -49,6 +49,12 @@ export const cursoAcademySchema = z.object({
     .min(1, "Debe haber al menos un instructor"),
   estado: z.enum(["disponible", "impartido"]),
   fecha: z.string().min(1),
+  // fecha_iso y destacado alimentan calcularProximosCursos() en
+  // generator/build.js -- sin ellos en el schema, editar un curso existente
+  // desde el panel los borraría silenciosamente (zod descarta claves no
+  // declaradas al parsear).
+  fecha_iso: z.string().min(1),
+  destacado: z.boolean().default(false),
   lugar: z.string().min(1),
   modalidad: z.string().min(1),
   precio: z.string().optional(),

@@ -5,11 +5,101 @@ import { cursoAcademySchema } from "../lib/schemas";
 import { listProfesionalSlugs } from "../lib/entities";
 import { imageUploadSchema, decodeImageUpload, imageUploadErrorMessage } from "../lib/imageUpload";
 import { MAX_PORTADA_IMAGE_BYTES, MAX_PORTADA_REQUEST_BYTES, exceedsContentLength, mb } from "../lib/limits";
+import { parseSlugParam } from "../lib/validation";
 import { requireAuth } from "../lib/auth";
 import type { Env } from "../lib/env";
 
 export const academy = new Hono<{ Bindings: Env }>();
 academy.use("*", requireAuth);
+
+academy.get("/", async (c) => {
+  const github = new GitHubClient(c.env);
+  const entries = await github.listDir("data/academy");
+  const items = await Promise.all(
+    entries
+      .filter((e) => e.type === "file" && e.name.endsWith(".json"))
+      .map(async (e) => {
+        const raw = await github.readTextFile(`data/academy/${e.name}`);
+        return raw ? JSON.parse(raw) : null;
+      })
+  );
+  return c.json({ items: items.filter(Boolean) });
+});
+
+academy.get("/:id", async (c) => {
+  const id = parseSlugParam(c.req.param("id"));
+  if (!id) return c.json({ error: "Id inválido" }, 400);
+
+  const github = new GitHubClient(c.env);
+  const raw = await github.readTextFile(`data/academy/${id}.json`);
+  if (!raw) return c.json({ error: "No encontrado" }, 404);
+  return c.json(JSON.parse(raw));
+});
+
+/** Toggle rápido de destacar/visibilidad desde el listado. */
+academy.patch("/:id", async (c) => {
+  const id = parseSlugParam(c.req.param("id"));
+  if (!id) return c.json({ error: "Id inválido" }, 400);
+
+  const body = await c.req.json<{ destacado?: boolean; visible?: boolean }>();
+  const github = new GitHubClient(c.env);
+  const path = `data/academy/${id}.json`;
+  const raw = await github.readTextFile(path);
+  if (!raw) return c.json({ error: "No encontrado" }, 404);
+
+  const current = cursoAcademySchema.parse(JSON.parse(raw));
+  const updated = {
+    ...current,
+    ...(body.destacado !== undefined ? { destacado: body.destacado } : {}),
+    ...(body.visible !== undefined ? { visible: body.visible } : {}),
+  };
+
+  const actionType = body.destacado !== undefined ? "destacar" : "hide";
+  const summary =
+    body.destacado !== undefined
+      ? `${body.destacado ? "Destacar" : "Quitar de destacados"}: ${current.titulo}`
+      : `${body.visible ? "Publicar" : "Ocultar de producción"}: ${current.titulo}`;
+
+  const user = c.get("user");
+  const { prNumber } = await submitChange(c.env, github, user, {
+    entityType: "curso",
+    entityId: id,
+    actionType,
+    summary,
+    files: [{ path, content: JSON.stringify(updated, null, 2) + "\n" }],
+  });
+
+  return c.json({ prNumber });
+});
+
+academy.delete("/:id", async (c) => {
+  const id = parseSlugParam(c.req.param("id"));
+  if (!id) return c.json({ error: "Id inválido" }, 400);
+
+  const github = new GitHubClient(c.env);
+  const path = `data/academy/${id}.json`;
+  const raw = await github.readTextFile(path);
+  if (!raw) return c.json({ error: "No encontrado" }, 404);
+  const current = cursoAcademySchema.parse(JSON.parse(raw));
+
+  const deletePaths = [path];
+  const propioPrefijo = `/img/academy/cursos/${id}/portada.`;
+  if (current.imagen_portada?.startsWith(propioPrefijo)) {
+    deletePaths.push(`public${current.imagen_portada}`);
+  }
+
+  const user = c.get("user");
+  const { prNumber } = await submitChange(c.env, github, user, {
+    entityType: "curso",
+    entityId: id,
+    actionType: "delete",
+    summary: `Eliminar curso de Academy: ${current.titulo}`,
+    files: [],
+    deletePaths,
+  });
+
+  return c.json({ prNumber });
+});
 
 academy.post("/", async (c) => {
   if (exceedsContentLength(c.req.raw, MAX_PORTADA_REQUEST_BYTES)) {

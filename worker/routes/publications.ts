@@ -5,11 +5,91 @@ import { publicacionSchema } from "../lib/schemas";
 import { listProfesionalSlugs } from "../lib/entities";
 import { imageUploadSchema, decodeImageUpload, imageUploadErrorMessage } from "../lib/imageUpload";
 import { MAX_PORTADA_IMAGE_BYTES, MAX_PORTADA_REQUEST_BYTES, exceedsContentLength, mb } from "../lib/limits";
+import { parseSlugParam } from "../lib/validation";
 import { requireAuth } from "../lib/auth";
 import type { Env } from "../lib/env";
 
 export const publications = new Hono<{ Bindings: Env }>();
 publications.use("*", requireAuth);
+
+publications.get("/", async (c) => {
+  const github = new GitHubClient(c.env);
+  const entries = await github.listDir("data/publicaciones");
+  const items = await Promise.all(
+    entries
+      .filter((e) => e.type === "file" && e.name.endsWith(".json"))
+      .map(async (e) => {
+        const raw = await github.readTextFile(`data/publicaciones/${e.name}`);
+        return raw ? JSON.parse(raw) : null;
+      })
+  );
+  return c.json({ items: items.filter(Boolean) });
+});
+
+publications.get("/:slug", async (c) => {
+  const slug = parseSlugParam(c.req.param("slug"));
+  if (!slug) return c.json({ error: "Slug inválido" }, 400);
+
+  const github = new GitHubClient(c.env);
+  const raw = await github.readTextFile(`data/publicaciones/${slug}.json`);
+  if (!raw) return c.json({ error: "No encontrada" }, 404);
+  return c.json(JSON.parse(raw));
+});
+
+/** Toggle rápido de visibilidad desde el listado. */
+publications.patch("/:slug", async (c) => {
+  const slug = parseSlugParam(c.req.param("slug"));
+  if (!slug) return c.json({ error: "Slug inválido" }, 400);
+
+  const body = await c.req.json<{ visible?: boolean }>();
+  const github = new GitHubClient(c.env);
+  const path = `data/publicaciones/${slug}.json`;
+  const raw = await github.readTextFile(path);
+  if (!raw) return c.json({ error: "No encontrada" }, 404);
+
+  const current = publicacionSchema.parse(JSON.parse(raw));
+  const updated = { ...current, ...(body.visible !== undefined ? { visible: body.visible } : {}) };
+
+  const user = c.get("user");
+  const { prNumber } = await submitChange(c.env, github, user, {
+    entityType: "publicacion",
+    entityId: slug,
+    actionType: "hide",
+    summary: `${body.visible ? "Publicar" : "Ocultar de producción"}: ${current.titulo}`,
+    files: [{ path, content: JSON.stringify(updated, null, 2) + "\n" }],
+  });
+
+  return c.json({ prNumber });
+});
+
+publications.delete("/:slug", async (c) => {
+  const slug = parseSlugParam(c.req.param("slug"));
+  if (!slug) return c.json({ error: "Slug inválido" }, 400);
+
+  const github = new GitHubClient(c.env);
+  const path = `data/publicaciones/${slug}.json`;
+  const raw = await github.readTextFile(path);
+  if (!raw) return c.json({ error: "No encontrada" }, 404);
+  const current = publicacionSchema.parse(JSON.parse(raw));
+
+  const deletePaths = [path];
+  const propioPrefijo = `/img/publicaciones/${slug}.`;
+  if (current.imagen_portada?.startsWith(propioPrefijo)) {
+    deletePaths.push(`public${current.imagen_portada}`);
+  }
+
+  const user = c.get("user");
+  const { prNumber } = await submitChange(c.env, github, user, {
+    entityType: "publicacion",
+    entityId: slug,
+    actionType: "delete",
+    summary: `Eliminar publicación: ${current.titulo}`,
+    files: [],
+    deletePaths,
+  });
+
+  return c.json({ prNumber });
+});
 
 publications.post("/", async (c) => {
   if (exceedsContentLength(c.req.raw, MAX_PORTADA_REQUEST_BYTES)) {
