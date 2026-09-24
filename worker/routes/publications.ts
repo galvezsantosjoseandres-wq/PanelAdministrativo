@@ -73,6 +73,10 @@ publications.delete("/:slug", async (c) => {
   const current = publicacionSchema.parse(JSON.parse(raw));
 
   const deletePaths = [path];
+  // Limitación conocida: si imagen_portada no matchea este prefijo (ej.
+  // sigue apuntando a la imagen por defecto de la categoría, o fue
+  // asignada manualmente fuera de convención), esa imagen NO se borra y
+  // queda huérfana en el repo. No se resuelve acá, solo documentado.
   const propioPrefijo = `/img/publicaciones/${slug}.`;
   if (current.imagen_portada?.startsWith(propioPrefijo)) {
     deletePaths.push(`public${current.imagen_portada}`);

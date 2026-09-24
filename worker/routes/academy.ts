@@ -83,6 +83,9 @@ academy.delete("/:id", async (c) => {
   const current = cursoAcademySchema.parse(JSON.parse(raw));
 
   const deletePaths = [path];
+  // Limitación conocida: si imagen_portada no matchea este prefijo, esa
+  // imagen NO se borra y queda huérfana en el repo. No se resuelve acá,
+  // solo documentado (mismo caso que publications.ts/professionals.ts).
   const propioPrefijo = `/img/academy/cursos/${id}/portada.`;
   if (current.imagen_portada?.startsWith(propioPrefijo)) {
     deletePaths.push(`public${current.imagen_portada}`);
