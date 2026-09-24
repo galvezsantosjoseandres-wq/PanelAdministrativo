@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, ListEditor, PageHeader, Textarea } from "../components/ui";
+import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
 export function ProfesionalNuevo() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export function ProfesionalNuevo() {
     fotoAlt: "",
     vcardArchivo: "",
   });
+  const [fotoUpload, setFotoUpload] = useState<ImageUpload | null>(null);
   const [consiente, setConsiente] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -32,7 +34,14 @@ export function ProfesionalNuevo() {
     setError(null);
     try {
       await api.crearProfesional(
-        { ...form, telefono_personal: form.telefono_personal || undefined },
+        {
+          ...form,
+          // "foto" es requerido por el esquema; si hay fotoUpload el backend
+          // la sobreescribe con la ruta real, así que un placeholder alcanza.
+          foto: form.foto || "/img/equipo/placeholder.jpg",
+          telefono_personal: form.telefono_personal || undefined,
+          fotoUpload,
+        },
         consiente
       );
       navigate("/cambios-pendientes");
@@ -114,11 +123,11 @@ export function ProfesionalNuevo() {
         <div className="space-y-6">
           <Card>
             <h2 className="font-semibold mb-4">Foto de perfil</h2>
-            <div className="w-32 h-32 rounded-full bg-slate-100 mx-auto mb-4" />
-            <p className="text-xs text-slate-400 text-center mb-4">Fondo de estudio, a color, cara centrada</p>
-            <Field label="Ruta de la foto (temporal, hasta wirear subida de imagen)">
-              <Input value={form.foto} onChange={(e) => setForm({ ...form, foto: e.target.value })} placeholder="/img/equipo/nombre-apellido.jpg" />
-            </Field>
+            <ImageUploadField
+              value={fotoUpload}
+              onChange={setFotoUpload}
+              helpText="Fondo de estudio, a color, cara centrada"
+            />
           </Card>
           <Card>
             <Field label="Orden de aparición">

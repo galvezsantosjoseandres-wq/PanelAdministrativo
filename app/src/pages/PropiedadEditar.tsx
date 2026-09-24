@@ -12,6 +12,7 @@ import {
   Textarea,
   Toggle,
 } from "../components/ui";
+import { GalleryUploader } from "../components/GalleryUploader";
 
 interface CaracteristicaRow {
   label: string;
@@ -218,12 +219,17 @@ export function PropiedadEditar() {
               se publique en producción.
             </p>
           </Card>
-          {!isNew && (
+          {!isNew && slug && (
+            <Card>
+              <h2 className="font-semibold mb-4">Galería</h2>
+              <GalleryUploader slug={slug} />
+            </Card>
+          )}
+          {isNew && (
             <Card>
               <h2 className="font-semibold mb-2">Galería</h2>
               <p className="text-sm text-slate-500">
-                La gestión de fotos/video de esta propiedad se hace desde una pantalla dedicada
-                una vez creada la propiedad (numeración 1..n, portada = foto #1).
+                Podrás subir fotos y video una vez que guardes esta propiedad por primera vez.
               </p>
             </Card>
           )}

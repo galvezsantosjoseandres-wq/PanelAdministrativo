@@ -64,6 +64,29 @@ export class GitHubClient {
     }
   }
 
+  /**
+   * URL pública de descarga de un archivo puntual (CDN de GitHub) -- sirve
+   * para previsualizar fotos de la galería sin tener que leer y re-servir
+   * los bytes desde el propio Worker. listDir() no trae este campo (solo
+   * lo da la variante de un único archivo de Contents API), por eso es un
+   * método aparte.
+   */
+  async getDownloadUrl(path: string): Promise<string | null> {
+    try {
+      const { data } = await this.octokit.rest.repos.getContent({
+        owner: this.owner,
+        repo: this.repo,
+        path,
+        ref: this.defaultBranch,
+      });
+      if (Array.isArray(data) || data.type !== "file") return null;
+      return data.download_url;
+    } catch (err: unknown) {
+      if (isNotFound(err)) return null;
+      throw err;
+    }
+  }
+
   /** Crea una rama nueva partiendo de la punta actual de la rama default. */
   async createBranch(branchName: string): Promise<void> {
     const { data: ref } = await this.octokit.rest.git.getRef({

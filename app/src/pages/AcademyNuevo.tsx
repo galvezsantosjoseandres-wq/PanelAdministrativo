@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, ListEditor, PageHeader, Textarea, Toggle } from "../components/ui";
+import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
 export function AcademyNuevo() {
   const navigate = useNavigate();
+  const [portadaUpload, setPortadaUpload] = useState<ImageUpload | null>(null);
   const [form, setForm] = useState({
     id: "",
     titulo: "",
@@ -35,6 +37,7 @@ export function AcademyNuevo() {
         descripcion: form.descripcionTexto.split("\n\n").map((p) => p.trim()).filter(Boolean),
         temario: form.temario.filter(Boolean),
         precio: form.precio || undefined,
+        portadaUpload,
       });
       navigate("/cambios-pendientes");
     } catch (e) {
@@ -88,6 +91,11 @@ export function AcademyNuevo() {
           </Card>
         </div>
         <div className="space-y-6">
+          <Card>
+            <h2 className="font-semibold mb-1">Imagen de portada</h2>
+            <p className="text-xs text-slate-400 mb-3">Opcional</p>
+            <ImageUploadField value={portadaUpload} onChange={setPortadaUpload} />
+          </Card>
           <Card>
             <h2 className="font-semibold mb-1">Instructores</h2>
             <p className="text-xs text-slate-400 mb-3">Uno o más · deben ser profesionales ya registrados</p>

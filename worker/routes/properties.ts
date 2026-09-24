@@ -4,6 +4,8 @@ import { submitChange } from "../lib/changes";
 import { propiedadSchema } from "../lib/schemas";
 import {
   GalleryValidationError,
+  kindForExt,
+  parseGalleryFileName,
   planGallery,
   type GalleryItemInput,
 } from "../lib/gallery";
@@ -102,52 +104,117 @@ properties.post("/", async (c) => {
   return c.json({ prNumber }, 201);
 });
 
-interface GalleryUploadItem {
+interface GalleryPreviewItem {
+  position: number;
+  ext: string;
+  kind: "foto" | "video";
+  name: string;
+  blobSha: string;
+  previewUrl: string | null;
+}
+
+/** Estado actual de la galería para pintar el editor sin adivinar nada. */
+properties.get("/:slug/galeria", async (c) => {
+  const slug = c.req.param("slug");
+  const github = new GitHubClient(c.env);
+  const folderPath = `public/img/propiedades/${slug}`;
+  const entries = await github.listDir(folderPath);
+
+  const items: GalleryPreviewItem[] = [];
+  for (const entry of entries) {
+    if (entry.type !== "file") continue;
+    const parsed = parseGalleryFileName(entry.name);
+    if (!parsed) continue; // archivo ajeno a la convención (ej. .gitkeep)
+
+    const kind = parsed.isPointer ? "video" : "foto";
+    const previewUrl = parsed.isPointer
+      ? await github.readTextFile(`${folderPath}/${entry.name}`)
+      : await github.getDownloadUrl(`${folderPath}/${entry.name}`);
+
+    items.push({
+      position: parsed.position,
+      ext: parsed.ext,
+      kind,
+      name: entry.name,
+      blobSha: entry.sha,
+      previewUrl,
+    });
+  }
+  items.sort((a, b) => a.position - b.position);
+
+  return c.json({ items });
+});
+
+/**
+ * multipart/form-data: campo `order` (JSON con el orden final de la
+ * galería) + partes `file-<index>` para cada ítem nuevo -- los videos
+ * pueden pesar cientos de MB, así que viajan binarios, nunca como base64
+ * dentro de un JSON que el Worker tendría que parsear entero en memoria.
+ */
+interface GalleryOrderItem {
   ext: string;
   existingName?: string;
   existingBlobSha?: string;
-  /** base64, solo para fotos nuevas */
-  newContentBase64?: string;
-  /** base64, solo para videos nuevos -- se sube a R2 antes de commitear */
-  newVideoBase64?: string;
+  isNew?: boolean;
 }
 
 properties.post("/:slug/galeria", async (c) => {
   const slug = c.req.param("slug");
-  const body = await c.req.json<{ items: GalleryUploadItem[] }>();
+  const form = await c.req.parseBody({ all: true });
+
+  const orderRaw = form["order"];
+  if (typeof orderRaw !== "string") {
+    return c.json({ error: "Falta el campo 'order' con el orden de la galería" }, 400);
+  }
+  let order: GalleryOrderItem[];
+  try {
+    order = JSON.parse(orderRaw);
+  } catch {
+    return c.json({ error: "'order' no es JSON válido" }, 400);
+  }
+
   const github = new GitHubClient(c.env);
   const user = c.get("user");
   const folderPath = `public/img/propiedades/${slug}`;
-
   const currentEntries = await github.listDir(folderPath);
 
   const r2Uploads: { key: string; data: Uint8Array }[] = [];
-  const items: GalleryItemInput[] = body.items.map((item, idx) => {
-    if (item.existingName) {
-      return {
-        ext: item.ext,
-        existingName: item.existingName,
-        existingBlobSha: item.existingBlobSha,
-      };
-    }
-    if (item.newContentBase64) {
-      return {
-        ext: item.ext,
-        newContent: base64ToUint8Array(item.newContentBase64),
-      };
-    }
-    if (item.newVideoBase64) {
-      const key = `lefinor/propiedades/${slug}/${idx + 1}.${item.ext.toLowerCase()}`;
-      r2Uploads.push({ key, data: base64ToUint8Array(item.newVideoBase64) });
-      return { ext: item.ext, newVideoObjectKey: key };
-    }
-    throw new GalleryValidationError(
-      `Ítem de galería incompleto en la posición ${idx + 1}`
-    );
-  });
-
+  const items: GalleryItemInput[] = [];
   let plan;
   try {
+    for (let idx = 0; idx < order.length; idx++) {
+      const item = order[idx];
+      if (!item.isNew) {
+        if (!item.existingName) {
+          throw new GalleryValidationError(
+            `Ítem existente sin nombre en la posición ${idx + 1}`
+          );
+        }
+        items.push({
+          ext: item.ext,
+          existingName: item.existingName,
+          existingBlobSha: item.existingBlobSha,
+        });
+        continue;
+      }
+
+      const file = form[`file-${idx}`];
+      if (!(file instanceof File)) {
+        throw new GalleryValidationError(
+          `Falta el archivo para la posición ${idx + 1}`
+        );
+      }
+      const bytes = new Uint8Array(await file.arrayBuffer());
+
+      if (kindForExt(item.ext) === "video") {
+        const key = `lefinor/propiedades/${slug}/${idx + 1}.${item.ext.toLowerCase()}`;
+        r2Uploads.push({ key, data: bytes });
+        items.push({ ext: item.ext, newVideoObjectKey: key });
+      } else {
+        items.push({ ext: item.ext, newContent: bytes });
+      }
+    }
+
     plan = planGallery(slug, items, c.env.R2_PUBLIC_BASE_URL, currentEntries);
   } catch (err) {
     if (err instanceof GalleryValidationError) {
@@ -173,10 +240,3 @@ properties.post("/:slug/galeria", async (c) => {
 
   return c.json({ prNumber }, 200);
 });
-
-function base64ToUint8Array(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}

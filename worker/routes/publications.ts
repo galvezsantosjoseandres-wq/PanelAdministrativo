@@ -1,8 +1,9 @@
 import { Hono } from "hono";
-import { GitHubClient } from "../lib/github";
+import { GitHubClient, type FileChange } from "../lib/github";
 import { submitChange } from "../lib/changes";
 import { publicacionSchema } from "../lib/schemas";
 import { listProfesionalSlugs } from "../lib/entities";
+import { imageUploadSchema, decodeImageUpload } from "../lib/imageUpload";
 import { requireAuth } from "../lib/auth";
 import type { Env } from "../lib/env";
 
@@ -11,11 +12,21 @@ publications.use("*", requireAuth);
 
 publications.post("/", async (c) => {
   const body = await c.req.json();
-  const parsed = publicacionSchema.safeParse(body);
+  const { portadaUpload, ...rest } = body ?? {};
+
+  const parsed = publicacionSchema.safeParse(rest);
   if (!parsed.success) {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
   const publicacion = parsed.data;
+
+  const uploadParsed = portadaUpload
+    ? imageUploadSchema.safeParse(portadaUpload)
+    : null;
+  if (uploadParsed && !uploadParsed.success) {
+    return c.json({ error: "Imagen de portada inválida" }, 400);
+  }
+
   const github = new GitHubClient(c.env);
 
   const profesionales = await listProfesionalSlugs(github);
@@ -28,19 +39,27 @@ publications.post("/", async (c) => {
     );
   }
 
+  const files: FileChange[] = [];
+  if (uploadParsed?.success) {
+    const { ext, bytes } = decodeImageUpload(uploadParsed.data);
+    const imagePath = `public/img/publicaciones/${publicacion.slug}.${ext}`;
+    publicacion.imagen_portada = `/img/publicaciones/${publicacion.slug}.${ext}`;
+    files.push({ path: imagePath, content: bytes });
+  }
+
   const user = c.get("user");
   const path = `data/publicaciones/${publicacion.slug}.json`;
   const existing = await github.readTextFile(path);
   const actionType = existing ? "edit" : "create";
+
+  files.push({ path, content: JSON.stringify(publicacion, null, 2) + "\n" });
 
   const { prNumber } = await submitChange(c.env, github, user, {
     entityType: "publicacion",
     entityId: publicacion.slug,
     actionType,
     summary: `${actionType === "create" ? "Nueva publicación" : "Editar publicación"}: ${publicacion.titulo}`,
-    files: [
-      { path, content: JSON.stringify(publicacion, null, 2) + "\n" },
-    ],
+    files,
   });
 
   return c.json({ prNumber }, 201);

@@ -45,14 +45,27 @@ npm run dev                       # Vite (5173) + wrangler dev (8787), con proxy
 - `npm test` — unit tests (hoy: lógica pura de numeración de galería).
 - `npm run deploy` — build + `wrangler deploy`.
 
+## Subida de imágenes/video
+
+- **Portada única** (publicaciones, academy, profesionales): el formulario
+  sube la imagen como base64 dentro del mismo body JSON del POST. El backend
+  la decodifica, la commitea junto al JSON de la entidad (mismo PR, mismo
+  commit) y setea `imagen_portada`/`foto` a la ruta convencional:
+  - Publicación: `public/img/publicaciones/<slug>.<ext>`
+  - Academy: `public/img/academy/cursos/<id>/portada.<ext>`
+  - Profesional: `public/img/equipo/<slug>.<ext>`
+- **Galería de propiedades** (`GalleryUploader`): `GET /api/propiedades/:slug/galeria`
+  para listar el estado actual (con `previewUrl` por ítem), `POST` en
+  `multipart/form-data` para guardar — los archivos viajan binarios (nunca
+  base64 en JSON), porque un video puede pesar cientos de MB. La lógica pura
+  de numeración/renumeración (`worker/lib/gallery.ts`) no cambió y sigue
+  cubierta por sus 12 tests.
+
 ## Pendiente antes de considerar el panel "terminado"
 
 - Pantalla **Carrusel de Inicio**: bloqueada hasta que exista `data/hero.json`
   en Lefinor (hoy el hero es HTML fijo). Es un cambio de código al generador
   de Lefinor, a resolver en una sesión aparte con permiso explícito de
   escritura sobre ese repo — no es tarea de este repo.
-- Subida de fotos/foto de perfil desde la UI (el endpoint de galería de
-  propiedades ya existe en el backend; falta el widget de subida en el
-  formulario de Editar propiedad y en Agregar profesional).
 - Correr la revisión de seguridad de `mis-claude-skills` contra este código
   antes de la entrega final.

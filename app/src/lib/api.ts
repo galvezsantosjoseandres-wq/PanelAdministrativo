@@ -33,11 +33,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  subirGaleria: (slug: string, items: unknown[]) =>
-    request<{ prNumber: number }>(`/propiedades/${slug}/galeria`, {
-      method: "POST",
-      body: JSON.stringify({ items }),
-    }),
 
   crearPublicacion: (data: unknown) =>
     request<{ prNumber: number }>("/publicaciones", {

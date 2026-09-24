@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, PageHeader, Textarea } from "../components/ui";
+import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
 export function PublicacionNueva() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export function PublicacionNueva() {
     imagen_portada: null as string | null,
     visible: false,
   });
+  const [portadaUpload, setPortadaUpload] = useState<ImageUpload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -27,6 +29,7 @@ export function PublicacionNueva() {
       await api.crearPublicacion({
         ...form,
         cuerpo: form.cuerpoTexto.split("\n\n").map((p) => p.trim()).filter(Boolean),
+        portadaUpload,
       });
       navigate("/cambios-pendientes");
     } catch (e) {
@@ -83,6 +86,13 @@ export function PublicacionNueva() {
           </Card>
         </div>
         <div className="space-y-6">
+          <Card>
+            <h2 className="font-semibold mb-1">Imagen de portada</h2>
+            <p className="text-xs text-slate-400 mb-3">
+              Opcional. Si no subes una, el artículo usa la imagen por defecto de la categoría.
+            </p>
+            <ImageUploadField value={portadaUpload} onChange={setPortadaUpload} />
+          </Card>
           <Card>
             <h2 className="font-semibold mb-1">Autor</h2>
             <p className="text-xs text-slate-400 mb-3">Obligatorio · debe ser un profesional ya registrado</p>
