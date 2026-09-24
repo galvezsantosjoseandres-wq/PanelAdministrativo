@@ -36,7 +36,7 @@ function nextKey() {
   return `item-${++keySeq}`;
 }
 
-export function GalleryUploader({ slug }: { slug: string }) {
+export function GalleryUploader({ slug, onSaved }: { slug: string; onSaved?: () => void }) {
   const [rows, setRows] = useState<GalleryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,6 +45,12 @@ export function GalleryUploader({ slug }: { slug: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!slug) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     fetch(`/api/propiedades/${slug}/galeria`)
       .then((r) => r.json())
       .then((data: { items: ExistingItem[] }) => {
@@ -131,6 +137,7 @@ export function GalleryUploader({ slug }: { slug: string }) {
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? `Error ${res.status}`);
       setOk(`Enviado a revisión (PR #${body.prNumber}).`);
+      onSaved?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al guardar la galería");
     } finally {

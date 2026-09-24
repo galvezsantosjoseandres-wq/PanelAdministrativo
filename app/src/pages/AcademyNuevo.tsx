@@ -1,27 +1,63 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, ListEditor, PageHeader, Textarea, Toggle } from "../components/ui";
 import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
+const empty = {
+  id: "",
+  titulo: "",
+  fecha: "",
+  fecha_iso: new Date().toISOString().slice(0, 10),
+  lugar: "Vía Zoom / Google Meet",
+  modalidad: "Virtual",
+  precio: "",
+  descripcionTexto: "",
+  temario: [] as string[],
+  instructorIdsTexto: "",
+  estado: "disponible" as "disponible" | "impartido",
+  destacado: false,
+  visible: false,
+};
+
 export function AcademyNuevo() {
+  const { id } = useParams();
+  const isNew = !id;
   const navigate = useNavigate();
   const [portadaUpload, setPortadaUpload] = useState<ImageUpload | null>(null);
-  const [form, setForm] = useState({
-    id: "",
-    titulo: "",
-    fecha: "",
-    lugar: "Vía Zoom / Google Meet",
-    modalidad: "Virtual",
-    precio: "",
-    descripcionTexto: "",
-    temario: [] as string[],
-    instructorIdsTexto: "",
-    estado: "disponible" as "disponible" | "impartido",
-    visible: false,
-  });
+  const [form, setForm] = useState(empty);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    api.obtenerCurso(id).then((data) => {
+      const c = data as unknown as {
+        id: string;
+        titulo: string;
+        fecha: string;
+        fecha_iso: string;
+        lugar: string;
+        modalidad: string;
+        precio?: string;
+        descripcion?: string[];
+        temario?: string[];
+        instructor_ids?: string[];
+        estado: "disponible" | "impartido";
+        destacado?: boolean;
+        visible: boolean;
+      };
+      setForm({
+        ...empty,
+        ...c,
+        precio: c.precio ?? "",
+        descripcionTexto: (c.descripcion ?? []).join("\n\n"),
+        temario: c.temario ?? [],
+        instructorIdsTexto: (c.instructor_ids ?? []).join(", "),
+        destacado: c.destacado ?? false,
+      });
+    });
+  }, [id]);
 
   async function guardar() {
     setSaving(true);
@@ -50,10 +86,10 @@ export function AcademyNuevo() {
   return (
     <div>
       <PageHeader
-        title="Nuevo curso de Academy"
+        title={isNew ? "Nuevo curso de Academy" : form.titulo || "Editar curso de Academy"}
         action={
           <div className="space-x-2">
-            <Button variant="secondary" onClick={() => navigate(-1)}>Cancelar</Button>
+            <Button variant="secondary" onClick={() => navigate("/academy")}>Cancelar</Button>
             <Button onClick={guardar} disabled={saving}>{saving ? "Enviando…" : "Enviar a revisión"}</Button>
           </div>
         }
@@ -63,19 +99,27 @@ export function AcademyNuevo() {
         <div className="col-span-2 space-y-6">
           <Card>
             <Field label="Identificador (id)" required>
-              <Input value={form.id} onChange={(e) => setForm({ ...form, id: e.target.value })} placeholder="procesos-basicos-registro-titulos" />
+              <Input
+                value={form.id}
+                disabled={!isNew}
+                onChange={(e) => setForm({ ...form, id: e.target.value })}
+                placeholder="procesos-basicos-registro-titulos"
+              />
             </Field>
             <Field label="Título del curso" required>
               <Input value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
             </Field>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Fecha" required>
+              <Field label="Fecha (texto para mostrar)" required>
                 <Input value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} placeholder="Sábado 14 de noviembre, 2026 · 9:00 a.m. a 12:00 p.m." />
               </Field>
-              <Field label="Lugar" required>
-                <Input value={form.lugar} onChange={(e) => setForm({ ...form, lugar: e.target.value })} />
+              <Field label="Fecha (para ordenar, AAAA-MM-DD)" required>
+                <Input type="date" value={form.fecha_iso} onChange={(e) => setForm({ ...form, fecha_iso: e.target.value })} />
               </Field>
             </div>
+            <Field label="Lugar" required>
+              <Input value={form.lugar} onChange={(e) => setForm({ ...form, lugar: e.target.value })} />
+            </Field>
             <Field label="Modalidad" required>
               <Input value={form.modalidad} onChange={(e) => setForm({ ...form, modalidad: e.target.value })} />
             </Field>
@@ -113,6 +157,11 @@ export function AcademyNuevo() {
               label="Disponible (muestra inscripción)"
               checked={form.estado === "disponible"}
               onChange={(v) => setForm({ ...form, estado: v ? "disponible" : "impartido" })}
+            />
+            <Toggle
+              label="Destacar entre próximos cursos"
+              checked={form.destacado}
+              onChange={(destacado) => setForm({ ...form, destacado })}
             />
             <Toggle label="Visible al público" checked={form.visible} onChange={(visible) => setForm({ ...form, visible })} />
           </Card>

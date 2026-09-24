@@ -1,33 +1,44 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, ListEditor, PageHeader, Textarea } from "../components/ui";
 import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
+const empty = {
+  slug: "",
+  nombre: "",
+  honorifico: "",
+  cargo: "",
+  unidad: "abogados",
+  area: "Lefinor Abogados",
+  bioCompleta: "",
+  formacion: [] as string[],
+  experiencia: [] as string[],
+  email: "",
+  telefono: "",
+  telefono_personal: "",
+  orden: 1,
+  foto: "",
+  fotoAlt: "",
+  vcardArchivo: "",
+};
+
 export function ProfesionalNuevo() {
+  const { slug } = useParams();
+  const isNew = !slug;
   const navigate = useNavigate();
-  const [form, setForm] = useState({
-    slug: "",
-    nombre: "",
-    honorifico: "",
-    cargo: "",
-    unidad: "abogados",
-    area: "Lefinor Abogados",
-    bioCompleta: "",
-    formacion: [] as string[],
-    experiencia: [] as string[],
-    email: "",
-    telefono: "",
-    telefono_personal: "",
-    orden: 1,
-    foto: "",
-    fotoAlt: "",
-    vcardArchivo: "",
-  });
+  const [form, setForm] = useState(empty);
   const [fotoUpload, setFotoUpload] = useState<ImageUpload | null>(null);
   const [consiente, setConsiente] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!slug) return;
+    api.obtenerProfesional(slug).then((data) =>
+      setForm({ ...empty, ...data, telefono_personal: (data as unknown as { telefono_personal?: string }).telefono_personal ?? "" })
+    );
+  }, [slug]);
 
   async function guardar() {
     setSaving(true);
@@ -55,10 +66,10 @@ export function ProfesionalNuevo() {
   return (
     <div>
       <PageHeader
-        title="Agregar profesional"
+        title={isNew ? "Agregar profesional" : form.nombre || "Editar profesional"}
         action={
           <div className="space-x-2">
-            <Button variant="secondary" onClick={() => navigate(-1)}>Cancelar</Button>
+            <Button variant="secondary" onClick={() => navigate("/equipo")}>Cancelar</Button>
             <Button onClick={guardar} disabled={saving}>{saving ? "Enviando…" : "Enviar a revisión"}</Button>
           </div>
         }
@@ -70,7 +81,12 @@ export function ProfesionalNuevo() {
             <h2 className="font-semibold mb-4">Datos generales</h2>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Slug" required>
-                <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="nombre-apellido" />
+                <Input
+                  value={form.slug}
+                  disabled={!isNew}
+                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                  placeholder="nombre-apellido"
+                />
               </Field>
               <Field label="Honorífico">
                 <Input value={form.honorifico} onChange={(e) => setForm({ ...form, honorifico: e.target.value })} placeholder="Lic." />

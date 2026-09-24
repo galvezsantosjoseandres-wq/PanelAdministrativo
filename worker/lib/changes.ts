@@ -12,7 +12,7 @@ export function branchName(entityType: string, entityId: string): string {
 export interface SubmitChangeInput {
   entityType: string; // propiedad, publicacion, curso, profesional, hero
   entityId: string;
-  actionType: "create" | "edit" | "destacar" | "hide";
+  actionType: "create" | "edit" | "destacar" | "hide" | "delete";
   summary: string;
   files: FileChange[];
   deletePaths?: string[];

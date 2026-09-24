@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, ApiError, type Propiedad } from "../lib/api";
+import { api, ApiError, type CursoAcademy } from "../lib/api";
 import { Button, Card, ErrorBanner, InfoBanner, PageHeader } from "../components/ui";
 import { PreviewButton } from "../components/PreviewButton";
 
-export function Propiedades() {
-  const [items, setItems] = useState<Propiedad[]>([]);
+export function Academy() {
+  const [items, setItems] = useState<CursoAcademy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   async function load() {
-    const data = await api.listarPropiedades();
+    const data = await api.listarCursos();
     setItems(data.items ?? []);
     setLoading(false);
   }
@@ -20,10 +20,10 @@ export function Propiedades() {
     load();
   }, []);
 
-  async function toggle(slug: string, campo: "destacada" | "visible", valor: boolean) {
+  async function toggle(id: string, campo: "destacado" | "visible", valor: boolean) {
     setError(null);
     try {
-      await api.togglePropiedad(slug, campo, valor);
+      await api.toggleCurso(id, campo, valor);
       setFeedback("Cambio enviado a revisión.");
       load();
     } catch (e) {
@@ -31,11 +31,11 @@ export function Propiedades() {
     }
   }
 
-  async function eliminar(slug: string, titulo: string) {
+  async function eliminar(id: string, titulo: string) {
     if (!window.confirm(`¿Enviar a revisión la eliminación de "${titulo}"?`)) return;
     setError(null);
     try {
-      await api.eliminarPropiedad(slug);
+      await api.eliminarCurso(id);
       setFeedback("Eliminación enviada a revisión.");
       load();
     } catch (e) {
@@ -46,11 +46,11 @@ export function Propiedades() {
   return (
     <div>
       <PageHeader
-        title="Propiedades"
-        subtitle={`${items.filter((p) => p.visible).length} publicadas · ${items.filter((p) => !p.visible).length} ocultas`}
+        title="Academy"
+        subtitle={`${items.filter((c) => c.visible).length} publicados · ${items.filter((c) => !c.visible).length} ocultos`}
         action={
-          <Link to="/propiedades/nueva">
-            <Button>+ Nueva propiedad</Button>
+          <Link to="/academy/nuevo">
+            <Button>+ Nuevo curso</Button>
           </Link>
         }
       />
@@ -70,39 +70,39 @@ export function Propiedades() {
       <Card>
         {loading && <p className="text-sm text-slate-400">Cargando…</p>}
         {!loading && items.length === 0 && (
-          <p className="text-sm text-slate-400">Todavía no hay propiedades cargadas.</p>
+          <p className="text-sm text-slate-400">Todavía no hay cursos cargados.</p>
         )}
         <table className="w-full text-sm">
           <tbody>
-            {items.map((p) => (
-              <tr key={p.slug} className="border-b last:border-0">
+            {items.map((c) => (
+              <tr key={c.id} className="border-b last:border-0">
                 <td className="py-3">
-                  <div className="font-medium">{p.titulo}</div>
-                  <div className="text-slate-500">{p.ciudad}</div>
+                  <div className="font-medium">{c.titulo}</div>
+                  <div className="text-slate-500">{c.fecha}</div>
                 </td>
                 <td className="py-3">
                   <span className="px-2 py-1 rounded-full bg-slate-100 text-xs capitalize">
-                    {p.tipo_operacion}
+                    {c.estado}
                   </span>
                 </td>
                 <td className="py-3">
                   <button
-                    onClick={() => toggle(p.slug, "destacada", !p.destacada)}
-                    title="Destacar en Inicio"
-                    className={p.destacada ? "text-panel-gold" : "text-slate-300"}
+                    onClick={() => toggle(c.id, "destacado", !c.destacado)}
+                    title="Destacar entre próximos cursos"
+                    className={c.destacado ? "text-panel-gold" : "text-slate-300"}
                   >
                     ★
                   </button>
                 </td>
                 <td className="py-3 text-right space-x-2 whitespace-nowrap">
-                  <Link to={`/propiedades/${p.slug}`}>
+                  <Link to={`/academy/${c.id}`}>
                     <Button variant="secondary">Editar</Button>
                   </Link>
-                  <PreviewButton entityType="propiedad" entityId={p.slug} />
-                  <Button variant="secondary" onClick={() => toggle(p.slug, "visible", !p.visible)}>
-                    {p.visible ? "Ocultar de producción" : "Publicar"}
+                  <PreviewButton entityType="curso" entityId={c.id} />
+                  <Button variant="secondary" onClick={() => toggle(c.id, "visible", !c.visible)}>
+                    {c.visible ? "Ocultar de producción" : "Publicar"}
                   </Button>
-                  <Button variant="danger" onClick={() => eliminar(p.slug, p.titulo)}>
+                  <Button variant="danger" onClick={() => eliminar(c.id, c.titulo)}>
                     Eliminar
                   </Button>
                 </td>
