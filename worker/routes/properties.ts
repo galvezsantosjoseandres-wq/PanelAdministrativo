@@ -9,6 +9,7 @@ import {
   planGallery,
   type GalleryItemInput,
 } from "../lib/gallery";
+import { MAX_GALLERY_REQUEST_BYTES, exceedsContentLength, mb } from "../lib/limits";
 import { requireAuth } from "../lib/auth";
 import type { Env } from "../lib/env";
 
@@ -159,6 +160,17 @@ interface GalleryOrderItem {
 }
 
 properties.post("/:slug/galeria", async (c) => {
+  // Corte por Content-Length ANTES de parseBody() -- parseBody materializa
+  // el multipart completo en memoria, así que si ya sabemos por el header
+  // que se pasa del límite, no tiene sentido leerlo primero para recién
+  // ahí rechazarlo.
+  if (exceedsContentLength(c.req.raw, MAX_GALLERY_REQUEST_BYTES)) {
+    return c.json(
+      { error: `La solicitud excede el máximo permitido (${mb(MAX_GALLERY_REQUEST_BYTES)}).` },
+      413
+    );
+  }
+
   const slug = c.req.param("slug");
   const form = await c.req.parseBody({ all: true });
 
@@ -181,6 +193,7 @@ properties.post("/:slug/galeria", async (c) => {
   const r2Uploads: { key: string; data: Uint8Array }[] = [];
   const items: GalleryItemInput[] = [];
   let plan;
+  let totalNewBytes = 0;
   try {
     for (let idx = 0; idx < order.length; idx++) {
       const item = order[idx];
@@ -205,6 +218,16 @@ properties.post("/:slug/galeria", async (c) => {
         );
       }
       const bytes = new Uint8Array(await file.arrayBuffer());
+      // Backstop además del corte por Content-Length de más arriba: ese
+      // header puede faltar (chunked transfer-encoding) o no reflejar el
+      // tamaño real -- esto es lo que realmente decide si se sube a R2 o
+      // se commitea algo.
+      totalNewBytes += bytes.length;
+      if (totalNewBytes > MAX_GALLERY_REQUEST_BYTES) {
+        throw new GalleryValidationError(
+          `Los archivos nuevos suman ${mb(totalNewBytes)}; el máximo permitido es ${mb(MAX_GALLERY_REQUEST_BYTES)}.`
+        );
+      }
 
       if (kindForExt(item.ext) === "video") {
         const key = `lefinor/propiedades/${slug}/${idx + 1}.${item.ext.toLowerCase()}`;

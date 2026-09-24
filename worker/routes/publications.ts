@@ -3,7 +3,8 @@ import { GitHubClient, type FileChange } from "../lib/github";
 import { submitChange } from "../lib/changes";
 import { publicacionSchema } from "../lib/schemas";
 import { listProfesionalSlugs } from "../lib/entities";
-import { imageUploadSchema, decodeImageUpload } from "../lib/imageUpload";
+import { imageUploadSchema, decodeImageUpload, imageUploadErrorMessage } from "../lib/imageUpload";
+import { MAX_PORTADA_IMAGE_BYTES, MAX_PORTADA_REQUEST_BYTES, exceedsContentLength, mb } from "../lib/limits";
 import { requireAuth } from "../lib/auth";
 import type { Env } from "../lib/env";
 
@@ -11,6 +12,13 @@ export const publications = new Hono<{ Bindings: Env }>();
 publications.use("*", requireAuth);
 
 publications.post("/", async (c) => {
+  if (exceedsContentLength(c.req.raw, MAX_PORTADA_REQUEST_BYTES)) {
+    return c.json(
+      { error: `La solicitud excede el máximo permitido (${mb(MAX_PORTADA_REQUEST_BYTES)}).` },
+      413
+    );
+  }
+
   const body = await c.req.json();
   const { portadaUpload, ...rest } = body ?? {};
 
@@ -24,7 +32,7 @@ publications.post("/", async (c) => {
     ? imageUploadSchema.safeParse(portadaUpload)
     : null;
   if (uploadParsed && !uploadParsed.success) {
-    return c.json({ error: "Imagen de portada inválida" }, 400);
+    return c.json({ error: imageUploadErrorMessage(uploadParsed.error) }, 400);
   }
 
   const github = new GitHubClient(c.env);
@@ -42,6 +50,14 @@ publications.post("/", async (c) => {
   const files: FileChange[] = [];
   if (uploadParsed?.success) {
     const { ext, bytes } = decodeImageUpload(uploadParsed.data);
+    if (bytes.length > MAX_PORTADA_IMAGE_BYTES) {
+      return c.json(
+        {
+          error: `La imagen pesa ${mb(bytes.length)}; el máximo permitido es ${mb(MAX_PORTADA_IMAGE_BYTES)}.`,
+        },
+        413
+      );
+    }
     const imagePath = `public/img/publicaciones/${publicacion.slug}.${ext}`;
     publicacion.imagen_portada = `/img/publicaciones/${publicacion.slug}.${ext}`;
     files.push({ path: imagePath, content: bytes });
