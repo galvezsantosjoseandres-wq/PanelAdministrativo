@@ -57,7 +57,7 @@ export class GitHubClient {
       if (Array.isArray(data) || data.type !== "file" || !data.content) {
         return null;
       }
-      return atob(data.content.replace(/\n/g, ""));
+      return base64ToUtf8(data.content.replace(/\n/g, ""));
     } catch (err: unknown) {
       if (isNotFound(err)) return null;
       throw err;
@@ -298,4 +298,17 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
   }
   return btoa(binary);
+}
+
+/**
+ * Decodifica un blob base64 (tal como lo devuelve la Contents API de GitHub)
+ * a texto UTF-8. atob() por sí solo produce una "binary string" byte-a-byte
+ * (equivalente a interpretar los bytes como Latin-1), por lo que hace falta
+ * reconstruir los code points reales con TextDecoder -- sin este paso,
+ * cualquier acento o ñ sale corrupto (mojibake tipo "baÃ±os").
+ */
+export function base64ToUtf8(base64: string): string {
+  const binary = atob(base64);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
