@@ -1,0 +1,47 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "panel-administrativo",
+  "main": "worker/index.ts",
+  "compatibility_date": "2024-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Frontend estático (build de app/ via Vite) servido por el mismo Worker,
+  // mismo patrón que usa Lefinor/wrangler.jsonc con su binding ASSETS.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+
+  // Base de datos propia del panel: users, audit_log, pending_changes.
+  // Crear con: wrangler d1 create panel-lefinor
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "panel-lefinor",
+      "database_id": "REPLACE_WITH_REAL_D1_ID"
+    }
+  ],
+
+  // Binding nativo al bucket ya existente lefinor-media (misma cuenta
+  // Cloudflare Activosweb) -- sin API token, decisión tomada con José.
+  "r2_buckets": [
+    {
+      "binding": "R2_BUCKET",
+      "bucket_name": "lefinor-media"
+    }
+  ],
+
+  // Secretos (nunca en este archivo, se configuran con `wrangler secret put`):
+  //   GITHUB_TOKEN        - fine-grained PAT, solo repo Lefinor, Contents+PRs RW
+  //   CF_ACCESS_TOKEN     - API token de Cloudflare con permiso sobre la política
+  //                         de Access de panel.lefinor.com (sincronía de roles)
+  //   CF_ACCESS_TEAM_DOMAIN - <team>.cloudflareaccess.com, para validar el JWT
+  //   CF_ACCESS_AUD       - AUD tag de la aplicación de Access panel.lefinor.com
+  "vars": {
+    "GITHUB_OWNER": "galvezsantosjoseandres-wq",
+    "GITHUB_REPO": "Lefinor",
+    "GITHUB_DEFAULT_BRANCH": "main",
+    "R2_PUBLIC_BASE_URL": "REPLACE_WITH_R2_PUBLIC_DOMAIN"
+  }
+}
