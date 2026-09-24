@@ -40,6 +40,6 @@ CREATE TABLE IF NOT EXISTS pending_changes (
 
 CREATE INDEX IF NOT EXISTS idx_pending_changes_status ON pending_changes (status);
 
--- Seed: primer Propietario. Reemplazar el email antes de aplicar en producción.
+-- Seed: primer Propietario.
 INSERT OR IGNORE INTO users (email, role, invited_by, created_at)
-VALUES ('jose@activosweb.com', 'propietario', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+VALUES ('estarlingg01@gmail.com', 'propietario', NULL, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));

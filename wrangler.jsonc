@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "panel-administrativo",
+  "name": "paneladministrativo",
   "main": "worker/index.ts",
   "compatibility_date": "2024-11-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -19,7 +19,7 @@
     {
       "binding": "DB",
       "database_name": "panel-lefinor",
-      "database_id": "REPLACE_WITH_REAL_D1_ID"
+      "database_id": "1310e0a1-fb76-4073-9ed9-b8aedd3efaa7"
     }
   ],
 
@@ -42,6 +42,6 @@
     "GITHUB_OWNER": "galvezsantosjoseandres-wq",
     "GITHUB_REPO": "Lefinor",
     "GITHUB_DEFAULT_BRANCH": "main",
-    "R2_PUBLIC_BASE_URL": "REPLACE_WITH_R2_PUBLIC_DOMAIN"
+    "R2_PUBLIC_BASE_URL": "https://videos.lefinor.com"
   }
 }
