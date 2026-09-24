@@ -75,6 +75,13 @@ export const api = {
       { method: "DELETE" }
     ),
 
+  obtenerHero: () => request<{ items: HeroSlide[] }>("/hero"),
+  guardarHero: (items: HeroSlideInput[]) =>
+    request<{ prNumber: number }>("/hero", {
+      method: "PUT",
+      body: JSON.stringify({ items }),
+    }),
+
   historial: (params: Record<string, string | undefined>) => {
     const q = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v) as [string, string][]
@@ -82,6 +89,25 @@ export const api = {
     return request<{ items: AuditLogEntry[] }>(`/historial?${q.toString()}`);
   },
 };
+
+export interface HeroBoton {
+  texto: string;
+  href: string;
+}
+
+export interface HeroSlide {
+  eyebrow: string;
+  titulo: string;
+  subtexto: string;
+  imagen: string;
+  imagen_alt: string;
+  imagen_posicion: string;
+  botones?: HeroBoton[];
+}
+
+export interface HeroSlideInput extends HeroSlide {
+  imagenUpload?: { ext: string; base64: string } | null;
+}
 
 export interface PendingChange {
   id: number;

@@ -6,6 +6,7 @@ import { professionals } from "./routes/professionals";
 import { pendingChanges } from "./routes/pendingChanges";
 import { settings } from "./routes/settings";
 import { auditLog } from "./routes/auditLog";
+import { hero } from "./routes/hero";
 import { requireAuth } from "./lib/auth";
 import type { Env } from "./lib/env";
 
@@ -22,6 +23,7 @@ app.route("/api/profesionales", professionals);
 app.route("/api/cambios-pendientes", pendingChanges);
 app.route("/api/ajustes", settings);
 app.route("/api/historial", auditLog);
+app.route("/api/hero", hero);
 
 // Todo lo que no sea /api/* lo sirve el binding ASSETS (el SPA de app/).
 app.get("*", (c) => c.env.ASSETS.fetch(c.req.raw));

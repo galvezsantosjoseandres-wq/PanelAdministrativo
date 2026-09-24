@@ -80,3 +80,24 @@ export const profesionalSchema = z.object({
   vcardArchivo: z.string().default(""),
 });
 export type Profesional = z.infer<typeof profesionalSchema>;
+
+// Shape verificado contra data/hero.json real del repo Lefinor.
+const heroBotonSchema = z.object({
+  texto: z.string().min(1),
+  href: z.string().min(1),
+});
+
+export const heroSlideSchema = z.object({
+  eyebrow: z.string().min(1),
+  titulo: z.string().min(1),
+  subtexto: z.string().min(1),
+  imagen: z.string().min(1),
+  imagen_alt: z.string().min(1),
+  imagen_posicion: z.string().min(1),
+  botones: z.array(heroBotonSchema).optional(),
+});
+export type HeroSlide = z.infer<typeof heroSlideSchema>;
+
+export const heroSchema = z
+  .array(heroSlideSchema)
+  .min(1, "Debe haber al menos un slide");
