@@ -3,10 +3,12 @@ import { z } from "zod";
 // Esquemas exactos verificados contra data/*.json del repo Lefinor -- ver
 // sección 9 del plan. No se inventan campos nuevos.
 
+export const SLUG_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
 const slug = z
   .string()
   .min(1)
-  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Slug inválido: usa minúsculas, números y guiones");
+  .regex(SLUG_REGEX, "Slug inválido: usa minúsculas, números y guiones");
 
 export const propiedadSchema = z.object({
   slug,

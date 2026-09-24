@@ -9,6 +9,8 @@ import {
   planGallery,
   type GalleryItemInput,
 } from "../lib/gallery";
+import { MAX_GALLERY_REQUEST_BYTES, exceedsContentLength, mb } from "../lib/limits";
+import { parseSlugParam } from "../lib/validation";
 import { requireAuth } from "../lib/auth";
 import type { Env } from "../lib/env";
 
@@ -30,17 +32,20 @@ properties.get("/", async (c) => {
 });
 
 properties.get("/:slug", async (c) => {
+  const slug = parseSlugParam(c.req.param("slug"));
+  if (!slug) return c.json({ error: "Slug inválido" }, 400);
+
   const github = new GitHubClient(c.env);
-  const raw = await github.readTextFile(
-    `data/propiedades/${c.req.param("slug")}.json`
-  );
+  const raw = await github.readTextFile(`data/propiedades/${slug}.json`);
   if (!raw) return c.json({ error: "No encontrada" }, 404);
   return c.json(JSON.parse(raw));
 });
 
 /** Toggle rápido de destacar/ocultar desde el listado, sin pasar por el formulario completo. */
 properties.patch("/:slug", async (c) => {
-  const slug = c.req.param("slug");
+  const slug = parseSlugParam(c.req.param("slug"));
+  if (!slug) return c.json({ error: "Slug inválido" }, 400);
+
   const body = await c.req.json<{ destacada?: boolean; visible?: boolean }>();
   const github = new GitHubClient(c.env);
   const path = `data/propiedades/${slug}.json`;
@@ -115,7 +120,9 @@ interface GalleryPreviewItem {
 
 /** Estado actual de la galería para pintar el editor sin adivinar nada. */
 properties.get("/:slug/galeria", async (c) => {
-  const slug = c.req.param("slug");
+  const slug = parseSlugParam(c.req.param("slug"));
+  if (!slug) return c.json({ error: "Slug inválido" }, 400);
+
   const github = new GitHubClient(c.env);
   const folderPath = `public/img/propiedades/${slug}`;
   const entries = await github.listDir(folderPath);
@@ -159,7 +166,20 @@ interface GalleryOrderItem {
 }
 
 properties.post("/:slug/galeria", async (c) => {
-  const slug = c.req.param("slug");
+  // Corte por Content-Length ANTES de parseBody() -- parseBody materializa
+  // el multipart completo en memoria, así que si ya sabemos por el header
+  // que se pasa del límite, no tiene sentido leerlo primero para recién
+  // ahí rechazarlo.
+  if (exceedsContentLength(c.req.raw, MAX_GALLERY_REQUEST_BYTES)) {
+    return c.json(
+      { error: `La solicitud excede el máximo permitido (${mb(MAX_GALLERY_REQUEST_BYTES)}).` },
+      413
+    );
+  }
+
+  const slug = parseSlugParam(c.req.param("slug"));
+  if (!slug) return c.json({ error: "Slug inválido" }, 400);
+
   const form = await c.req.parseBody({ all: true });
 
   const orderRaw = form["order"];
@@ -181,6 +201,7 @@ properties.post("/:slug/galeria", async (c) => {
   const r2Uploads: { key: string; data: Uint8Array }[] = [];
   const items: GalleryItemInput[] = [];
   let plan;
+  let totalNewBytes = 0;
   try {
     for (let idx = 0; idx < order.length; idx++) {
       const item = order[idx];
@@ -205,6 +226,16 @@ properties.post("/:slug/galeria", async (c) => {
         );
       }
       const bytes = new Uint8Array(await file.arrayBuffer());
+      // Backstop además del corte por Content-Length de más arriba: ese
+      // header puede faltar (chunked transfer-encoding) o no reflejar el
+      // tamaño real -- esto es lo que realmente decide si se sube a R2 o
+      // se commitea algo.
+      totalNewBytes += bytes.length;
+      if (totalNewBytes > MAX_GALLERY_REQUEST_BYTES) {
+        throw new GalleryValidationError(
+          `Los archivos nuevos suman ${mb(totalNewBytes)}; el máximo permitido es ${mb(MAX_GALLERY_REQUEST_BYTES)}.`
+        );
+      }
 
       if (kindForExt(item.ext) === "video") {
         const key = `lefinor/propiedades/${slug}/${idx + 1}.${item.ext.toLowerCase()}`;
