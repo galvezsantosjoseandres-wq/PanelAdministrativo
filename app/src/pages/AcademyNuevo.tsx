@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError } from "../lib/api";
+import { api, ApiError, type Profesional } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, ListEditor, PageHeader, Textarea, Toggle } from "../components/ui";
 import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
@@ -16,7 +16,7 @@ const empty = {
   precio: "",
   descripcionTexto: "",
   temario: [] as string[],
-  instructorIdsTexto: "",
+  instructor_ids: [] as string[],
   estado: "disponible" as "disponible" | "impartido",
   destacado: false,
   visible: false,
@@ -29,8 +29,13 @@ export function AcademyNuevo() {
   const navigate = useNavigate();
   const [portadaUpload, setPortadaUpload] = useState<ImageUpload | null>(null);
   const [form, setForm] = useState(empty);
+  const [profesionales, setProfesionales] = useState<Profesional[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.listarProfesionales().then((data) => setProfesionales(data.items));
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -57,23 +62,27 @@ export function AcademyNuevo() {
         precio: c.precio ?? "",
         descripcionTexto: (c.descripcion ?? []).join("\n\n"),
         temario: c.temario ?? [],
-        instructorIdsTexto: (c.instructor_ids ?? []).join(", "),
+        instructor_ids: c.instructor_ids ?? [],
         destacado: c.destacado ?? false,
       });
     });
   }, [id]);
 
+  function toggleInstructor(slug: string) {
+    setForm((f) => ({
+      ...f,
+      instructor_ids: f.instructor_ids.includes(slug)
+        ? f.instructor_ids.filter((s) => s !== slug)
+        : [...f.instructor_ids, slug],
+    }));
+  }
+
   async function guardar() {
     setSaving(true);
     setError(null);
-    const instructor_ids = form.instructorIdsTexto
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
     try {
       await api.crearCurso({
         ...form,
-        instructor_ids,
         descripcion: form.descripcionTexto.split("\n\n").map((p) => p.trim()).filter(Boolean),
         temario: form.temario.filter(Boolean),
         precio: form.precio || undefined,
@@ -151,13 +160,21 @@ export function AcademyNuevo() {
           <Card>
             <h2 className="font-semibold mb-1">Instructores</h2>
             <p className="text-xs text-slate-400 mb-3">Uno o más · deben ser profesionales ya registrados</p>
-            <Field label="Slugs separados por coma" required>
-              <Input
-                value={form.instructorIdsTexto}
-                onChange={(e) => setForm({ ...form, instructorIdsTexto: e.target.value })}
-                placeholder="franklin-morillo, francheska-rodriguez"
-              />
-            </Field>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {profesionales.map((p) => (
+                <label key={p.slug} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.instructor_ids.includes(p.slug)}
+                    onChange={() => toggleInstructor(p.slug)}
+                  />
+                  {p.nombre} — {p.cargo}
+                </label>
+              ))}
+              {profesionales.length === 0 && (
+                <p className="text-xs text-slate-400">Cargando profesionales…</p>
+              )}
+            </div>
           </Card>
           <Card>
             <h2 className="font-semibold mb-4">Estado</h2>

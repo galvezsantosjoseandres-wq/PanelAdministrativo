@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError } from "../lib/api";
+import { api, ApiError, type Profesional } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, PageHeader, Textarea } from "../components/ui";
 import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
@@ -25,8 +25,13 @@ export function PublicacionNueva() {
   const navigate = useNavigate();
   const [form, setForm] = useState(empty);
   const [portadaUpload, setPortadaUpload] = useState<ImageUpload | null>(null);
+  const [profesionales, setProfesionales] = useState<Profesional[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.listarProfesionales().then((data) => setProfesionales(data.items));
+  }, []);
 
   useEffect(() => {
     if (!slug) return;
@@ -115,12 +120,19 @@ export function PublicacionNueva() {
           <Card>
             <h2 className="font-semibold mb-1">Autor</h2>
             <p className="text-xs text-slate-400 mb-3">Obligatorio · debe ser un profesional ya registrado</p>
-            <Field label="Slug del profesional" required>
-              <Input
+            <Field label="Profesional" required>
+              <select
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 value={form.autor_id}
                 onChange={(e) => setForm({ ...form, autor_id: e.target.value })}
-                placeholder="franklin-morillo"
-              />
+              >
+                <option value="">Selecciona un profesional…</option>
+                {profesionales.map((p) => (
+                  <option key={p.slug} value={p.slug}>
+                    {p.nombre} — {p.cargo}
+                  </option>
+                ))}
+              </select>
             </Field>
           </Card>
           <Card className="bg-amber-50 border-amber-200 text-sm text-amber-800">
