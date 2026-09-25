@@ -19,7 +19,10 @@ export const propiedadSchema = z.object({
   caracteristicas: z
     .array(z.object({ label: z.string().min(1), valor: z.string().min(1) }))
     .default([]),
-  detalle_intro: z.string().default(""),
+  // Array de párrafos (mismo patrón que cuerpo/descripcion de
+  // Publicaciones/Academy) -- un string plano no daba forma de que la
+  // plantilla renderizara párrafos reales, se veía todo corrido.
+  detalle_intro: z.array(z.string()).default([]),
   detalle_bullets: z.array(z.string()).default([]),
   detalle_cierre: z.string().default(""),
   destacada: z.boolean().default(false),
