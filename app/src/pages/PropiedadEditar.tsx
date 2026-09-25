@@ -27,7 +27,6 @@ const empty = {
   ciudad: "",
   quickspecs: [] as string[],
   caracteristicas: [] as CaracteristicaRow[],
-  detalle_intro: "",
   detalle_bullets: [] as string[],
   detalle_cierre: "",
   destacada: false,
@@ -39,6 +38,7 @@ export function PropiedadEditar() {
   const isNew = !slug;
   const navigate = useNavigate();
   const [form, setForm] = useState(empty);
+  const [detalleIntroTexto, setDetalleIntroTexto] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [gallerySaved, setGallerySaved] = useState(false);
@@ -48,7 +48,11 @@ export function PropiedadEditar() {
 
   useEffect(() => {
     if (!slug) return;
-    api.obtenerPropiedad(slug).then((data) => setForm({ ...empty, ...data }));
+    api.obtenerPropiedad(slug).then((data) => {
+      const p = data as unknown as typeof empty & { detalle_intro?: string[] };
+      setForm({ ...empty, ...p });
+      setDetalleIntroTexto((p.detalle_intro ?? []).join("\n\n"));
+    });
   }, [slug]);
 
   async function guardar() {
@@ -61,7 +65,10 @@ export function PropiedadEditar() {
     }
     setSaving(true);
     try {
-      await api.crearPropiedad(form);
+      await api.crearPropiedad({
+        ...form,
+        detalle_intro: detalleIntroTexto.split("\n\n").map((p) => p.trim()).filter(Boolean),
+      });
       navigate("/cambios-pendientes");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Error al guardar");
@@ -133,11 +140,11 @@ export function PropiedadEditar() {
                 />
               </Field>
             </div>
-            <Field label="Descripción introductoria" required>
+            <Field label="Descripción introductoria (un párrafo por línea en blanco)" required>
               <Textarea
                 rows={8}
-                value={form.detalle_intro}
-                onChange={(e) => setForm({ ...form, detalle_intro: e.target.value })}
+                value={detalleIntroTexto}
+                onChange={(e) => setDetalleIntroTexto(e.target.value)}
               />
             </Field>
             <Field label="Datos rápidos (specs)">
