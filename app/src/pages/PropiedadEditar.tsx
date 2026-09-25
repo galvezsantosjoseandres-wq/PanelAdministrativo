@@ -120,7 +120,7 @@ export function PropiedadEditar() {
             </div>
             <Field label="Descripción introductoria" required>
               <Textarea
-                rows={3}
+                rows={8}
                 value={form.detalle_intro}
                 onChange={(e) => setForm({ ...form, detalle_intro: e.target.value })}
               />
