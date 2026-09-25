@@ -13,5 +13,11 @@
     "noUnusedParameters": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["worker"]
+  "include": ["worker"],
+  // *.integration.test.ts importa "cloudflare:test", un módulo ambiental
+  // que solo existe bajo @cloudflare/vitest-pool-workers (ver
+  // vitest.integration.config.ts) -- se verificó por separado con un tsc
+  // ad-hoc incluyendo esos tipos, sin errores; se excluye acá para no
+  // mezclar dos configuraciones de tipos distintas en el mismo tsconfig.
+  "exclude": ["**/*.integration.test.ts"]
 }
