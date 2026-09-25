@@ -4,6 +4,8 @@ import { api, ApiError } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, ListEditor, PageHeader, Textarea } from "../components/ui";
 import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
+const LEFINOR_BASE_URL = "https://lefinor.com";
+
 const empty = {
   slug: "",
   nombre: "",
@@ -142,6 +144,7 @@ export function ProfesionalNuevo() {
             <ImageUploadField
               value={fotoUpload}
               onChange={setFotoUpload}
+              existingPreviewUrl={form.foto ? `${LEFINOR_BASE_URL}${form.foto}` : null}
               helpText="Fondo de estudio, a color, cara centrada"
             />
           </Card>
