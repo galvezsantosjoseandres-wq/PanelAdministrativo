@@ -73,12 +73,12 @@ publications.delete("/:slug", async (c) => {
   const current = publicacionSchema.parse(JSON.parse(raw));
 
   const deletePaths = [path];
-  // Limitación conocida: si imagen_portada no matchea este prefijo (ej.
-  // sigue apuntando a la imagen por defecto de la categoría, o fue
-  // asignada manualmente fuera de convención), esa imagen NO se borra y
-  // queda huérfana en el repo. No se resuelve acá, solo documentado.
-  const propioPrefijo = `/img/publicaciones/${slug}.`;
-  if (current.imagen_portada?.startsWith(propioPrefijo)) {
+  // El default de categoría (generator/lib/categorias-publicaciones.js) se
+  // resuelve en build time y nunca se guarda en imagen_portada -- ese campo
+  // solo es null o la ruta propia de este slug, así que siempre es seguro
+  // borrarla si está presente (deletePaths con una ruta inexistente es un
+  // no-op en la Git Trees API, no revienta el commit).
+  if (current.imagen_portada) {
     deletePaths.push(`public${current.imagen_portada}`);
   }
 

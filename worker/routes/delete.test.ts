@@ -121,26 +121,31 @@ describe("DELETE /publicaciones/:slug", () => {
     ]);
   });
 
-  it("NO borra la imagen si su ruta no matchea el prefijo propio (ej. imagen por defecto de la categoría) -- limitación conocida, documentada", async () => {
+  it("borra la imagen aunque su ruta no matchee la convención propia del slug (fix: ya no queda huérfana en el repo)", async () => {
     const { publications } = await import("./publications");
     mockReadTextFile.mockResolvedValue(
       JSON.stringify({
-        slug: "articulo-sin-portada-propia",
+        slug: "articulo-portada-fuera-de-convencion",
         categoria: "derecho-civil",
-        titulo: "Artículo sin portada propia",
+        titulo: "Artículo con portada fuera de convención",
         fecha: "1 de enero, 2026",
         extracto: "Extracto",
         cuerpo: ["Párrafo"],
-        imagen_portada: "/img/publicaciones/categorias/derecho-civil.jpg",
+        imagen_portada: "/img/publicaciones/legacy-2023.jpg",
         autor_id: "franklin-morillo",
       })
     );
 
-    await publications.request("/articulo-sin-portada-propia", { method: "DELETE" }, fakeEnv);
+    await publications.request(
+      "/articulo-portada-fuera-de-convencion",
+      { method: "DELETE" },
+      fakeEnv
+    );
 
     const input = mockSubmitChange.mock.calls[0][3];
     expect(input.deletePaths).toEqual([
-      "data/publicaciones/articulo-sin-portada-propia.json",
+      "data/publicaciones/articulo-portada-fuera-de-convencion.json",
+      "public/img/publicaciones/legacy-2023.jpg",
     ]);
   });
 });

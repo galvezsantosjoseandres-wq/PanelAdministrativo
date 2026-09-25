@@ -83,11 +83,11 @@ academy.delete("/:id", async (c) => {
   const current = cursoAcademySchema.parse(JSON.parse(raw));
 
   const deletePaths = [path];
-  // Limitación conocida: si imagen_portada no matchea este prefijo, esa
-  // imagen NO se borra y queda huérfana en el repo. No se resuelve acá,
-  // solo documentado (mismo caso que publications.ts/professionals.ts).
-  const propioPrefijo = `/img/academy/cursos/${id}/portada.`;
-  if (current.imagen_portada?.startsWith(propioPrefijo)) {
+  // Academy no tiene imagen por defecto compartida (a diferencia de
+  // Publicaciones): si imagen_portada está presente, es siempre la propia
+  // del curso -- siempre seguro borrarla (deletePaths con una ruta
+  // inexistente es un no-op en la Git Trees API).
+  if (current.imagen_portada) {
     deletePaths.push(`public${current.imagen_portada}`);
   }
 
