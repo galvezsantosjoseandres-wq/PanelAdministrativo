@@ -26,30 +26,69 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  me: () => request<{ email: string; role: "propietario" | "colaborador" }>("/me"),
+  me: () =>
+    request<{ email: string; role: "propietario" | "colaborador"; teamDomain: string }>("/me"),
 
+  listarPropiedades: () => request<{ items: Propiedad[] }>("/propiedades"),
+  obtenerPropiedad: (slug: string) => request<Propiedad>(`/propiedades/${slug}`),
   crearPropiedad: (data: unknown) =>
     request<{ prNumber: number }>("/propiedades", {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  togglePropiedad: (slug: string, campo: "destacada" | "visible", valor: boolean) =>
+    request<{ prNumber: number }>(`/propiedades/${slug}`, {
+      method: "PATCH",
+      body: JSON.stringify({ [campo]: valor }),
+    }),
+  eliminarPropiedad: (slug: string) =>
+    request<{ prNumber: number }>(`/propiedades/${slug}`, { method: "DELETE" }),
 
+  listarPublicaciones: () => request<{ items: Publicacion[] }>("/publicaciones"),
+  obtenerPublicacion: (slug: string) => request<Publicacion>(`/publicaciones/${slug}`),
   crearPublicacion: (data: unknown) =>
     request<{ prNumber: number }>("/publicaciones", {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  togglePublicacion: (slug: string, visible: boolean) =>
+    request<{ prNumber: number }>(`/publicaciones/${slug}`, {
+      method: "PATCH",
+      body: JSON.stringify({ visible }),
+    }),
+  eliminarPublicacion: (slug: string) =>
+    request<{ prNumber: number }>(`/publicaciones/${slug}`, { method: "DELETE" }),
 
+  listarCursos: () => request<{ items: CursoAcademy[] }>("/academy"),
+  obtenerCurso: (id: string) => request<CursoAcademy>(`/academy/${id}`),
   crearCurso: (data: unknown) =>
     request<{ prNumber: number }>("/academy", {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  toggleCurso: (id: string, campo: "destacado" | "visible", valor: boolean) =>
+    request<{ prNumber: number }>(`/academy/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ [campo]: valor }),
+    }),
+  eliminarCurso: (id: string) =>
+    request<{ prNumber: number }>(`/academy/${id}`, { method: "DELETE" }),
 
+  listarProfesionales: () => request<{ items: Profesional[] }>("/profesionales"),
+  obtenerProfesional: (slug: string) => request<Profesional>(`/profesionales/${slug}`),
   crearProfesional: (data: unknown, consentimientoTelefonoPersonal?: boolean) =>
     request<{ prNumber: number }>("/profesionales", {
       method: "POST",
       body: JSON.stringify({ ...(data as object), consentimientoTelefonoPersonal }),
+    }),
+  eliminarProfesional: (slug: string) =>
+    request<{ prNumber: number }>(`/profesionales/${slug}`, { method: "DELETE" }),
+
+  obtenerHero: () => request<{ items: HeroSlide[] }>("/hero"),
+  guardarHero: (items: HeroSlideInput[]) =>
+    request<{ prNumber: number }>("/hero", {
+      method: "PUT",
+      body: JSON.stringify({ items }),
     }),
 
   cambiosPendientes: () =>
@@ -75,13 +114,6 @@ export const api = {
       { method: "DELETE" }
     ),
 
-  obtenerHero: () => request<{ items: HeroSlide[] }>("/hero"),
-  guardarHero: (items: HeroSlideInput[]) =>
-    request<{ prNumber: number }>("/hero", {
-      method: "PUT",
-      body: JSON.stringify({ items }),
-    }),
-
   historial: (params: Record<string, string | undefined>) => {
     const q = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v) as [string, string][]
@@ -93,6 +125,41 @@ export const api = {
 export interface HeroBoton {
   texto: string;
   href: string;
+}
+
+export interface Propiedad {
+  slug: string;
+  titulo: string;
+  ciudad: string;
+  tipo_operacion: "venta" | "alquiler";
+  destacada: boolean;
+  visible: boolean;
+}
+
+export interface Publicacion {
+  slug: string;
+  categoria: string;
+  titulo: string;
+  fecha: string;
+  autor_id: string;
+  visible: boolean;
+}
+
+export interface CursoAcademy {
+  id: string;
+  titulo: string;
+  estado: "disponible" | "impartido";
+  fecha: string;
+  destacado: boolean;
+  visible: boolean;
+}
+
+export interface Profesional {
+  slug: string;
+  nombre: string;
+  cargo: string;
+  area: string;
+  orden: number;
 }
 
 export interface HeroSlide {

@@ -14,7 +14,9 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.get("/api/health", (c) => c.json({ ok: true }));
 
-app.get("/api/me", requireAuth, (c) => c.json(c.get("user")));
+app.get("/api/me", requireAuth, (c) =>
+  c.json({ ...c.get("user"), teamDomain: c.env.CF_ACCESS_TEAM_DOMAIN })
+);
 
 app.route("/api/propiedades", properties);
 app.route("/api/publicaciones", publications);

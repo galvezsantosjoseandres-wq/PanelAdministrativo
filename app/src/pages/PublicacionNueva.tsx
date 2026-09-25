@@ -1,26 +1,38 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { Button, Card, ErrorBanner, Field, Input, PageHeader, Textarea } from "../components/ui";
 import { ImageUploadField, type ImageUpload } from "../components/ImageUploadField";
 
+const empty = {
+  slug: "",
+  categoria: "derecho-civil",
+  titulo: "",
+  fecha: new Date().toLocaleDateString("es-DO", { day: "numeric", month: "long", year: "numeric" }),
+  extracto: "",
+  cuerpoTexto: "",
+  fuente: "",
+  autor_id: "",
+  imagen_portada: null as string | null,
+  visible: false,
+};
+
 export function PublicacionNueva() {
+  const { slug } = useParams();
+  const isNew = !slug;
   const navigate = useNavigate();
-  const [form, setForm] = useState({
-    slug: "",
-    categoria: "derecho-civil",
-    titulo: "",
-    fecha: new Date().toLocaleDateString("es-DO", { day: "numeric", month: "long", year: "numeric" }),
-    extracto: "",
-    cuerpoTexto: "",
-    fuente: "",
-    autor_id: "",
-    imagen_portada: null as string | null,
-    visible: false,
-  });
+  const [form, setForm] = useState(empty);
   const [portadaUpload, setPortadaUpload] = useState<ImageUpload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!slug) return;
+    api.obtenerPublicacion(slug).then((data) => {
+      const p = data as unknown as typeof empty & { cuerpo?: string[] };
+      setForm({ ...empty, ...p, cuerpoTexto: (p.cuerpo ?? []).join("\n\n") });
+    });
+  }, [slug]);
 
   async function guardar() {
     setSaving(true);
@@ -42,10 +54,10 @@ export function PublicacionNueva() {
   return (
     <div>
       <PageHeader
-        title="Nueva publicación"
+        title={isNew ? "Nueva publicación" : form.titulo || "Editar publicación"}
         action={
           <div className="space-x-2">
-            <Button variant="secondary" onClick={() => navigate(-1)}>Cancelar</Button>
+            <Button variant="secondary" onClick={() => navigate("/publicaciones")}>Cancelar</Button>
             <Button onClick={guardar} disabled={saving}>
               {saving ? "Enviando…" : "Enviar a revisión"}
             </Button>
@@ -67,6 +79,7 @@ export function PublicacionNueva() {
             <Field label="Slug" required>
               <Input
                 value={form.slug}
+                disabled={!isNew}
                 onChange={(e) => setForm({ ...form, slug: e.target.value })}
                 placeholder="analisis-codigo-penal-empresas"
               />
@@ -81,7 +94,7 @@ export function PublicacionNueva() {
               <Textarea rows={8} value={form.cuerpoTexto} onChange={(e) => setForm({ ...form, cuerpoTexto: e.target.value })} />
             </Field>
             <Field label="Fuente">
-              <Input value={form.fuente} onChange={(e) => setForm({ ...form, fuente: e.target.value })} />
+              <Input value={form.fuente ?? ""} onChange={(e) => setForm({ ...form, fuente: e.target.value })} />
             </Field>
           </Card>
         </div>
