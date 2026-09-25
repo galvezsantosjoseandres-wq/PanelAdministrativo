@@ -46,13 +46,10 @@ professionals.delete("/:slug", async (c) => {
   const current = profesionalSchema.parse(JSON.parse(raw));
 
   const deletePaths = [path];
-  // Limitación conocida: si foto no matchea este prefijo, esa imagen NO
-  // se borra y queda huérfana en el repo. No se resuelve acá, solo
-  // documentado (mismo caso que publications.ts/academy.ts).
-  const propioPrefijo = `/img/equipo/${slug}.`;
-  if (current.foto?.startsWith(propioPrefijo)) {
-    deletePaths.push(`public${current.foto}`);
-  }
+  // foto es obligatoria y siempre es la propia del profesional -- siempre
+  // seguro borrarla (deletePaths con una ruta inexistente es un no-op en
+  // la Git Trees API).
+  deletePaths.push(`public${current.foto}`);
 
   const user = c.get("user");
   const { prNumber } = await submitChange(c.env, github, user, {
