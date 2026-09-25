@@ -85,7 +85,7 @@ export const api = {
     request<{ prNumber: number }>(`/profesionales/${slug}`, { method: "DELETE" }),
 
   obtenerHero: () => request<{ items: HeroSlide[] }>("/hero"),
-  guardarHero: (items: HeroSlide[]) =>
+  guardarHero: (items: HeroSlideInput[]) =>
     request<{ prNumber: number }>("/hero", {
       method: "PUT",
       body: JSON.stringify({ items }),
@@ -121,6 +121,11 @@ export const api = {
     return request<{ items: AuditLogEntry[] }>(`/historial?${q.toString()}`);
   },
 };
+
+export interface HeroBoton {
+  texto: string;
+  href: string;
+}
 
 export interface Propiedad {
   slug: string;
@@ -164,7 +169,11 @@ export interface HeroSlide {
   imagen: string;
   imagen_alt: string;
   imagen_posicion: string;
-  botones?: { texto: string; href: string }[];
+  botones?: HeroBoton[];
+}
+
+export interface HeroSlideInput extends HeroSlide {
+  imagenUpload?: { ext: string; base64: string } | null;
 }
 
 export interface PendingChange {
