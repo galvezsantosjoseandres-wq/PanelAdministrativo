@@ -200,47 +200,22 @@ export class GitHubClient {
   }
 
   /**
-   * Cloudflare Pages/Workers despliega una vista previa por cada PR de
-   * forma nativa (confirmado: build.yml de Lefinor no tiene paso de
-   * deploy). La URL aparece como un check-run o un deployment status
-   * sobre el head commit del PR -- se consulta bajo demanda, no por
-   * webhook, para no montar infraestructura de recepción de eventos en v1.
+   * Cloudflare Workers Builds comenta en cada PR con la URL real de la
+   * vista previa ("### Preview URL: https://...-lefinor.<subdominio>
+   * .workers.dev"). El check-run correspondiente (`Workers Builds:
+   * lefinor`) NO sirve para esto: su `details_url` apunta al dashboard
+   * de Cloudflare (dash.cloudflare.com/.../builds/...), nunca a una URL
+   * de preview navegable -- confirmado contra PRs reales de esta sesión,
+   * el intento anterior de leerlo desde ahí nunca funcionó. El comentario
+   * del bot sí trae la URL real en texto plano, se lee de ahí.
    */
-  async getPreviewUrl(headSha: string): Promise<string | null> {
-    const { data: checks } = await this.octokit.rest.checks.listForRef({
+  async getPreviewUrl(prNumber: number): Promise<string | null> {
+    const { data: comments } = await this.octokit.rest.issues.listComments({
       owner: this.owner,
       repo: this.repo,
-      ref: headSha,
+      issue_number: prNumber,
     });
-    for (const run of checks.check_runs) {
-      if (run.details_url && /pages\.dev|workers\.dev/.test(run.details_url)) {
-        return run.details_url;
-      }
-    }
-
-    const { data: deployments } = await this.octokit.rest.repos.listDeployments(
-      { owner: this.owner, repo: this.repo, sha: headSha }
-    );
-    for (const dep of deployments) {
-      const { data: statuses } =
-        await this.octokit.rest.repos.listDeploymentStatuses({
-          owner: this.owner,
-          repo: this.repo,
-          deployment_id: dep.id,
-        });
-      const withUrl = statuses.find((s) => s.environment_url);
-      if (withUrl?.environment_url) return withUrl.environment_url;
-    }
-    return null;
-  }
-
-  async getPullRequestHeadSha(prNumber: number): Promise<string> {
-    const { data: pr } = await this.octokit.rest.pulls.get({
-      owner: this.owner,
-      repo: this.repo,
-      pull_number: prNumber,
-    });
-    return pr.head.sha;
+    return extractPreviewUrlFromComments(comments);
   }
 
   async mergePullRequest(prNumber: number): Promise<void> {
@@ -307,6 +282,23 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
  * reconstruir los code points reales con TextDecoder -- sin este paso,
  * cualquier acento o ñ sale corrupto (mojibake tipo "baÃ±os").
  */
+interface BotComment {
+  user?: { type?: string } | null;
+  body?: string | null;
+}
+
+/** Función pura para poder testear el parseo sin mockear Octokit. */
+export function extractPreviewUrlFromComments(
+  comments: BotComment[]
+): string | null {
+  for (const comment of comments) {
+    if (comment.user?.type !== "Bot") continue;
+    const match = comment.body?.match(/Preview URL:\s*(\S+)/);
+    if (match) return match[1];
+  }
+  return null;
+}
+
 export function base64ToUtf8(base64: string): string {
   const binary = atob(base64);
   const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));

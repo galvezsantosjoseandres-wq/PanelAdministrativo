@@ -48,11 +48,7 @@ pendingChanges.get("/:id/preview", async (c) => {
   if (row.preview_url) return c.json({ previewUrl: row.preview_url });
 
   const github = new GitHubClient(c.env);
-  // el PR guarda su propio head sha; lo resolvemos vía la API en vez de
-  // guardarlo aparte, para no arrastrar un dato que puede quedar stale
-  // si alguien hace push adicional a la rama fuera del panel.
-  const headSha = await github.getPullRequestHeadSha(row.github_pr_number);
-  const previewUrl = await github.getPreviewUrl(headSha);
+  const previewUrl = await github.getPreviewUrl(row.github_pr_number);
   if (previewUrl) {
     await c.env.DB.prepare(
       `UPDATE pending_changes SET preview_url = ?, updated_at = ? WHERE id = ?`
