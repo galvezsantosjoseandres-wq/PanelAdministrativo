@@ -36,7 +36,15 @@ function nextKey() {
   return `item-${++keySeq}`;
 }
 
-export function GalleryUploader({ slug, onSaved }: { slug: string; onSaved?: () => void }) {
+export function GalleryUploader({
+  slug,
+  onSaved,
+  onDirtyChange,
+}: {
+  slug: string;
+  onSaved?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const [rows, setRows] = useState<GalleryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,29 +52,38 @@ export function GalleryUploader({ slug, onSaved }: { slug: string; onSaved?: () 
   const [ok, setOk] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  async function cargarGaleria() {
     if (!slug) {
       setRows([]);
-      setLoading(false);
       return;
     }
+    const r = await fetch(`/api/propiedades/${slug}/galeria`);
+    const data: { items: ExistingItem[] } = await r.json();
+    setRows(
+      data.items.map((it) => ({
+        key: nextKey(),
+        ext: it.ext,
+        kind: it.kind,
+        previewUrl: it.previewUrl,
+        existingName: it.name,
+        existingBlobSha: it.blobSha,
+      }))
+    );
+  }
+
+  useEffect(() => {
     setLoading(true);
-    fetch(`/api/propiedades/${slug}/galeria`)
-      .then((r) => r.json())
-      .then((data: { items: ExistingItem[] }) => {
-        setRows(
-          data.items.map((it) => ({
-            key: nextKey(),
-            ext: it.ext,
-            kind: it.kind,
-            previewUrl: it.previewUrl,
-            existingName: it.name,
-            existingBlobSha: it.blobSha,
-          }))
-        );
-      })
-      .finally(() => setLoading(false));
+    cargarGaleria().finally(() => setLoading(false));
   }, [slug]);
+
+  // Avisa al padre cuando hay fotos/video agregados localmente (row.file)
+  // que todavía no se enviaron con "Guardar galería" -- esto es lo que se
+  // usa para bloquear "Enviar a revisión" en PropiedadEditar y evitar que
+  // una galería quede huérfana (bug real visto en producción).
+  useEffect(() => {
+    onDirtyChange?.(rows.some((r) => r.file));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
 
   function addFiles(fileList: FileList | null) {
     if (!fileList) return;
@@ -137,6 +154,7 @@ export function GalleryUploader({ slug, onSaved }: { slug: string; onSaved?: () 
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? `Error ${res.status}`);
       setOk(`Enviado a revisión (PR #${body.prNumber}).`);
+      await cargarGaleria();
       onSaved?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al guardar la galería");

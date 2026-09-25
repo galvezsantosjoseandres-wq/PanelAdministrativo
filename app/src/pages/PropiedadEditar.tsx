@@ -42,6 +42,7 @@ export function PropiedadEditar() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [gallerySaved, setGallerySaved] = useState(false);
+  const [galeriaDirty, setGaleriaDirty] = useState(false);
   const slugValido = SLUG_REGEX.test(form.slug);
   const slugBloqueado = !isNew || gallerySaved;
 
@@ -51,8 +52,14 @@ export function PropiedadEditar() {
   }, [slug]);
 
   async function guardar() {
-    setSaving(true);
     setError(null);
+    if (galeriaDirty) {
+      setError(
+        "Tienes fotos o video agregados en la galería que no se han guardado. Haz clic en \"Guardar galería\" primero, o quítalos si no los quieres, antes de enviar a revisión."
+      );
+      return;
+    }
+    setSaving(true);
     try {
       await api.crearPropiedad(form);
       navigate("/cambios-pendientes");
@@ -72,7 +79,15 @@ export function PropiedadEditar() {
             <Button variant="secondary" onClick={() => navigate("/propiedades")}>
               Cancelar
             </Button>
-            <Button onClick={guardar} disabled={saving}>
+            <Button
+              onClick={guardar}
+              disabled={saving || galeriaDirty}
+              title={
+                galeriaDirty
+                  ? "Guarda primero la galería (fotos/video agregados sin guardar)"
+                  : undefined
+              }
+            >
               {saving ? "Enviando…" : "Enviar a revisión"}
             </Button>
           </div>
@@ -223,10 +238,17 @@ export function PropiedadEditar() {
           </Card>
           <Card>
             <h2 className="font-semibold mb-4">Galería</h2>
+            {galeriaDirty && (
+              <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 text-amber-800 text-xs px-3 py-2">
+                Tienes fotos/video agregados que no se han guardado. No podrás enviar la
+                propiedad a revisión hasta que hagas clic en "Guardar galería" (o los quites).
+              </p>
+            )}
             {slugValido ? (
               <GalleryUploader
                 slug={slug ?? form.slug}
                 onSaved={() => setGallerySaved(true)}
+                onDirtyChange={setGaleriaDirty}
               />
             ) : (
               <p className="text-sm text-slate-500">
